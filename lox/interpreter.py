@@ -1,8 +1,9 @@
 from decimal import Decimal
 from typing import Any
 
-from .expressions import Binary, Expr, Grouping, Literal, Unary, Visitor
+from .expressions import Binary, Expr, Grouping, Literal, Unary
 from .token import Token, TokenType
+from .visitor import Visitor
 
 
 class Interpreter(Visitor):

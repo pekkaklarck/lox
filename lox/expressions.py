@@ -7,8 +7,12 @@ from .token import Token
 @dataclass
 class Expr:
 
-    def accept(self, visitor: 'Visitor'):
+    def accept(self, visitor):
         return getattr(visitor, f'visit_{type(self).__name__}')(self)
+
+    def __str__(self):
+        from .astprinter import AstPrinter
+        return AstPrinter().format(self)
 
 
 @dataclass
@@ -32,19 +36,3 @@ class Grouping(Expr):
 @dataclass
 class Literal(Expr):
     value: Any
-
-
-class Visitor:
-
-    def visit_Binary(self, expr: Binary):
-        expr.left.accept(self)
-        expr.right.accept(self)
-
-    def visit_Unary(self, expr: Unary):
-        expr.right.accept(self)
-
-    def visit_Grouping(self, expr: Grouping):
-        expr.expression.accept(self)
-
-    def visit_Literal(self, expr: Literal):
-        pass

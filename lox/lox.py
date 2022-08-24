@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-from .astprinter import AstPrinter
 from .interpreter import Interpreter
 from .parser import Parser
 from .scanner import Scanner
@@ -33,7 +32,6 @@ class Lox:
     def run(self, source: str):
         tokens = Scanner(source, self.scan_error).scan_tokens()
         expression = Parser(tokens, self.parse_error).parse()
-        AstPrinter().print(expression)
         if not self.error_code:
             self.interpreter.interpret(expression)
 

@@ -1,10 +1,14 @@
-from .expressions import Binary, Expr, Grouping, Literal, Unary, Visitor
+from .expressions import Binary, Expr, Grouping, Literal, Unary
+from .visitor import Visitor
 
 
 class AstPrinter(Visitor):
 
     def print(self, expr: Expr):
-        print( expr.accept(self))
+        print(self.format(expr))
+
+    def format(self, expr: Expr):
+        return expr.accept(self)
 
     def visit_Binary(self, expr: Binary):
         return self._parenthesize(expr.operator.lexeme, expr.left, expr.right)
