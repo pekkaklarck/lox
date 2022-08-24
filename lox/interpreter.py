@@ -1,7 +1,9 @@
 from decimal import Decimal
 from typing import Any
 
-from .expressions import Binary, Expr, Grouping, Literal, Unary
+from .environment import Environment
+from .expressions import Assign, Binary, Expr, Grouping, Literal, Unary, Variable
+from .statements import Block, Expression, Print, Stmt, Var
 from .token import Token, TokenType
 from .visitor import Visitor
 
@@ -9,15 +11,51 @@ from .visitor import Visitor
 class Interpreter(Visitor):
 
     def __init__(self, error_reporter):
+        self.environment = Environment()
         self.error_reporter = error_reporter
 
-    def interpret(self, expression: Expr):
+    def interpret(self, statements: list[Stmt]):
         try:
-            value = self.evaluate(expression)
+            for stmt in statements:
+                self.execute(stmt)
         except RuntimeError as err:
             self.error_reporter(err)
-        else:
-            print(self.stringify(value))
+
+    def execute(self, stmt: Stmt):
+        stmt.accept(self)
+
+    def execute_block(self, statements: list[Stmt], environment: Environment):
+        previous, self.environment = self.environment, environment
+        try:
+            for stmt in statements:
+                self.execute(stmt)
+        finally:
+            self.environment = previous
+
+    def evaluate(self, expr: Expr):
+        return expr.accept(self)
+
+    def visit_Block(self, stmt: Block):
+        self.execute_block(stmt.statements, Environment(self.environment))
+
+    def visit_Expression(self, stmt: Expression):
+        self.evaluate(stmt.expression)
+
+    def visit_Print(self, stmt: Print):
+        value = self.evaluate(stmt.expression)
+        print(Literal(value))
+
+    def visit_Var(self, stmt: Var):
+        value = self.evaluate(stmt.initializer) if stmt.initializer is not None else None
+        self.environment.define(stmt.name.lexeme, value)
+
+    def visit_Variable(self, expr: Variable):
+        return self.environment.get(expr.name)
+
+    def visit_Assign(self, expr: Assign):
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
 
     def visit_Literal(self, expr: Literal):
         return expr.value
@@ -32,7 +70,7 @@ class Interpreter(Visitor):
                 self.check_number_operands(expr.operator, right)
                 return -right
             case TokenType.BANG:
-                return not self.is_truthy(right)
+                return not right
 
     def visit_Binary(self, expr: Binary):
         left = self.evaluate(expr.left)
@@ -70,9 +108,6 @@ class Interpreter(Visitor):
             case TokenType.EQUAL_EQUAL:
                 return left == right
 
-    def evaluate(self, expr: Expr):
-        return expr.accept(self)
-
     def check_number_operands(self, operator: Token, *operands: Any):
         if not all(isinstance(o, Decimal) for o in operands):
             raise RuntimeError('Operands must be numbers.', operator)
@@ -83,15 +118,3 @@ class Interpreter(Visitor):
         if all(isinstance(o, str) for o in operands):
             return
         raise RuntimeError('Operands must be two numbers or two strings.', operator)
-
-    def is_truthy(self, value):
-        return value is not None and value is not False
-
-    def stringify(self, value: Any):
-        if value is None:
-            return 'nil'
-        if isinstance(value, bool):
-            return 'true' if value else 'false'
-        if isinstance(value, Decimal):
-            return str(value)
-        return value

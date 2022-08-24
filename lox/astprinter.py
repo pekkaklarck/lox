@@ -1,14 +1,15 @@
 from .expressions import Binary, Expr, Grouping, Literal, Unary
+from .statements import Expression, Print, Stmt
 from .visitor import Visitor
 
 
 class AstPrinter(Visitor):
 
-    def print(self, expr: Expr):
-        print(self.format(expr))
+    def print(self, node: Expr|Stmt):
+        print(self.format(node))
 
-    def format(self, expr: Expr):
-        return expr.accept(self)
+    def format(self, node: Expr|Stmt):
+        return node.accept(self)
 
     def visit_Binary(self, expr: Binary):
         return self._parenthesize(expr.operator.lexeme, expr.left, expr.right)
@@ -20,8 +21,11 @@ class AstPrinter(Visitor):
         return self._parenthesize('group', expr.expression)
 
     def visit_Literal(self, expr: Literal):
-        return str(expr.value) if expr.value is not None else 'nil'
+        return str(expr)
 
-    def _parenthesize(self, name: str, *exprs: Expr):
+    def visit_Print(self, stmt: Print):
+        return self._parenthesize('print', stmt.expression)
+
+    def _parenthesize(self, name: str, *exprs: Expr | Stmt):
         parts = [name] + [e.accept(self) for e in exprs]
         return f'({" ".join(parts)})'

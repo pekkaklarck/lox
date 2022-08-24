@@ -31,9 +31,9 @@ class Lox:
 
     def run(self, source: str):
         tokens = Scanner(source, self.scan_error).scan_tokens()
-        expression = Parser(tokens, self.parse_error).parse()
+        statements = Parser(tokens, self.parse_error).parse()
         if not self.error_code:
-            self.interpreter.interpret(expression)
+            self.interpreter.interpret(statements)
 
     def scan_error(self, line: int, message: str):
         self.report(message, line)

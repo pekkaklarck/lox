@@ -34,5 +34,26 @@ class Grouping(Expr):
 
 
 @dataclass
+class Variable(Expr):
+    name: Token
+
+
+@dataclass
+class Assign(Expr):
+    name: Token
+    value: Expr
+
+
+@dataclass
 class Literal(Expr):
     value: Any
+
+    def __str__(self):
+        if self.value is None:
+            return 'nil'
+        if isinstance(self.value, bool):
+            return 'true' if self.value else 'false'
+        return str(self.value)
+
+    def __bool__(self):
+        return self.value is not None and self.value is not False
