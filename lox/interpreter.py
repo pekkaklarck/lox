@@ -2,8 +2,8 @@ from decimal import Decimal
 from typing import Any
 
 from .environment import Environment
-from .expressions import Assign, Binary, Expr, Grouping, Literal, Unary, Variable
-from .statements import Block, Expression, Print, Stmt, Var
+from .expressions import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable
+from .statements import Block, If, Expression, Print, Stmt, Var, While
 from .token import Token, TokenType
 from .visitor import Visitor
 
@@ -38,6 +38,12 @@ class Interpreter(Visitor):
     def visit_Block(self, stmt: Block):
         self.execute_block(stmt.statements, Environment(self.environment))
 
+    def visit_If(self, stmt: If):
+        if self.evaluate(stmt.condition):
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self.execute(stmt.else_branch)
+
     def visit_Expression(self, stmt: Expression):
         self.evaluate(stmt.expression)
 
@@ -49,28 +55,14 @@ class Interpreter(Visitor):
         value = self.evaluate(stmt.initializer) if stmt.initializer is not None else None
         self.environment.define(stmt.name.lexeme, value)
 
-    def visit_Variable(self, expr: Variable):
-        return self.environment.get(expr.name)
+    def visit_While(self, stmt: While):
+        while self.evaluate(stmt.condition):
+            self.execute(stmt.body)
 
     def visit_Assign(self, expr: Assign):
         value = self.evaluate(expr.value)
         self.environment.assign(expr.name, value)
         return value
-
-    def visit_Literal(self, expr: Literal):
-        return expr.value
-
-    def visit_Grouping(self, expr: Grouping):
-        return self.evaluate(expr.expression)
-
-    def visit_Unary(self, expr: Unary):
-        right = self.evaluate(expr.right)
-        match expr.operator.type:
-            case TokenType.MINUS:
-                self.check_number_operands(expr.operator, right)
-                return -right
-            case TokenType.BANG:
-                return not right
 
     def visit_Binary(self, expr: Binary):
         left = self.evaluate(expr.left)
@@ -107,6 +99,31 @@ class Interpreter(Visitor):
                 return left != right
             case TokenType.EQUAL_EQUAL:
                 return left == right
+
+    def visit_Grouping(self, expr: Grouping):
+        return self.evaluate(expr.expression)
+
+    def visit_Literal(self, expr: Literal):
+        return expr.value
+
+    def visit_Logical(self, expr: Logical):
+        left = self.evaluate(expr.left)
+        type = expr.operator.type
+        if type == TokenType.OR and left or type == TokenType.AND and not left:
+            return left
+        return self.evaluate(expr.right)
+
+    def visit_Unary(self, expr: Unary):
+        right = self.evaluate(expr.right)
+        match expr.operator.type:
+            case TokenType.MINUS:
+                self.check_number_operands(expr.operator, right)
+                return -right
+            case TokenType.BANG:
+                return not right
+
+    def visit_Variable(self, expr: Variable):
+        return self.environment.get(expr.name)
 
     def check_number_operands(self, operator: Token, *operands: Any):
         if not all(isinstance(o, Decimal) for o in operands):

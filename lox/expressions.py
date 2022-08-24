@@ -45,6 +45,13 @@ class Assign(Expr):
 
 
 @dataclass
+class Logical(Expr):
+    left: Expr
+    operator: Token
+    right: Expr
+
+
+@dataclass
 class Literal(Expr):
     value: Any
 
