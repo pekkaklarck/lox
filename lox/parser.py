@@ -1,7 +1,7 @@
 from typing import Callable
 
 from .expressions import Assign, Binary, Grouping, Expr, Literal, Logical, Unary, Variable
-from .statements import Block, Expression, If, Print, Stmt, Var, While
+from .statements import Block, Break, Expression, If, Print, Stmt, Var, While
 from .token import Token, TokenType
 
 
@@ -28,8 +28,8 @@ class Parser:
                 return self.var_declaration()
             return self.statement()
         except ParseError:
-            raise
-            self.synchronize()    # FIXME
+            # self.synchronize()    FIXME
+            pass
 
     def var_declaration(self) -> Var:
         name = self.consume(TokenType.IDENTIFIER, 'Expect variable name.')
@@ -38,14 +38,16 @@ class Parser:
         return Var(name, initializer)
 
     def statement(self) -> Stmt:
-        if self.match(TokenType.FOR):
-            return self.for_statement()
         if self.match(TokenType.IF):
             return self.if_statement()
         if self.match(TokenType.PRINT):
             return self.print_statement()
         if self.match(TokenType.WHILE):
             return self.while_statement()
+        if self.match(TokenType.FOR):
+            return self.for_statement()
+        if self.match(TokenType.BREAK):
+            return self.break_statement()
         if self.match(TokenType.LEFT_BRACE):
             return Block(self.block())
         return self.expression_statement()
@@ -92,6 +94,11 @@ class Parser:
         value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return Print(value)
+
+    def break_statement(self) -> Stmt:
+        token = self.previous()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after break.")
+        return Break(token)
 
     def while_statement(self) -> Stmt:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")

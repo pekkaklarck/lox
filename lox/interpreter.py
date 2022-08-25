@@ -3,7 +3,7 @@ from typing import Any
 
 from .environment import Environment
 from .expressions import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable
-from .statements import Block, If, Expression, Print, Stmt, Var, While
+from .statements import Block, Break, If, Expression, Print, Stmt, Var, While
 from .token import Token, TokenType
 from .visitor import Visitor
 
@@ -20,6 +20,8 @@ class Interpreter(Visitor):
                 self.execute(stmt)
         except RuntimeError as err:
             self.error_reporter(err)
+        except StopIteration as err:
+            self.error_reporter(RuntimeError("'break' outside loop.", err.args[0]))
 
     def execute(self, stmt: Stmt):
         stmt.accept(self)
@@ -37,6 +39,9 @@ class Interpreter(Visitor):
 
     def visit_Block(self, stmt: Block):
         self.execute_block(stmt.statements, Environment(self.environment))
+
+    def visit_Break(self, stmt: Break):
+        raise StopIteration(stmt.keyword)
 
     def visit_If(self, stmt: If):
         if self.evaluate(stmt.condition):
@@ -57,7 +62,10 @@ class Interpreter(Visitor):
 
     def visit_While(self, stmt: While):
         while self.evaluate(stmt.condition):
-            self.execute(stmt.body)
+            try:
+                self.execute(stmt.body)
+            except StopIteration:
+                break
 
     def visit_Assign(self, expr: Assign):
         value = self.evaluate(expr.value)

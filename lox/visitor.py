@@ -1,5 +1,5 @@
 from .expressions import Assign, Binary, Grouping, Literal, Logical, Unary, Variable
-from .statements import Block, If, Expression, Print, Var, While
+from .statements import Block, Break, If, Expression, Print, Var, While
 
 
 class Visitor:
@@ -7,6 +7,9 @@ class Visitor:
     def visit_Block(self, stmt: Block):
         for st in stmt.statements:
             st.accept(self)
+
+    def visit_Break(self, stmt: Break):
+        pass
 
     def visit_If(self, stmt: If):
         stmt.then_branch.accept(self)

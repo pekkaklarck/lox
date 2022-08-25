@@ -34,6 +34,7 @@ class TokenType(Enum):
 
     # Keywords.
     AND = auto()
+    BREAK = auto()
     CLASS = auto()
     ELSE = auto()
     FALSE = auto()
@@ -42,7 +43,6 @@ class TokenType(Enum):
     IF = auto()
     NIL = auto()
     OR = auto()
-
     PRINT = auto()
     RETURN = auto()
     SUPER = auto()

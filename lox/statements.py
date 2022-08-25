@@ -21,6 +21,11 @@ class Block(Stmt):
 
 
 @dataclass
+class Break(Stmt):
+    keyword: Token    # For error reporting purposes.
+
+
+@dataclass
 class If(Stmt):
     condition: Expr
     then_branch: Stmt
