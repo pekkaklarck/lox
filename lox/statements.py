@@ -4,64 +4,60 @@ from .expressions import Expr
 from .token import Token
 
 
-@dataclass
+@dataclass(eq=False)
 class Stmt:
 
     def accept(self, visitor):
-        return getattr(visitor, f'visit_{type(self).__name__}')(self)
-
-    def __str__(self):
-        from .astprinter import AstPrinter
-        return AstPrinter().format(self)
+        return visitor.visit(self)
 
 
-@dataclass
+@dataclass(eq=False)
 class Block(Stmt):
     statements: list[Stmt]
 
 
-@dataclass
+@dataclass(eq=False)
 class Break(Stmt):
     keyword: Token    # For error reporting purposes.
 
 
-@dataclass
+@dataclass(eq=False)
 class Function(Stmt):
     name: Token
     params: list[Token]
     body: list[Stmt]
 
 
-@dataclass
+@dataclass(eq=False)
 class If(Stmt):
     condition: Expr
     then_branch: Stmt
     else_branch: Stmt|None
 
 
-@dataclass
+@dataclass(eq=False)
 class Expression(Stmt):
     expression: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Print(Stmt):
     expression: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Return(Stmt):
     keyword: Token    # For error reporting.
     value: Expr|None
 
 
-@dataclass
+@dataclass(eq=False)
 class Var(Stmt):
     name: Token
     initializer: Expr|None
 
 
-@dataclass
+@dataclass(eq=False)
 class While(Stmt):
     condition: Expr
     body: Stmt

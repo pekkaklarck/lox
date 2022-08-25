@@ -4,6 +4,7 @@ from pathlib import Path
 from .exceptions import LoxError
 from .interpreter import Interpreter
 from .parser import Parser
+from .resolver import Resolver
 from .scanner import Scanner
 from .token import Token, TokenType
 
@@ -34,7 +35,9 @@ class Lox:
         tokens = Scanner(source, self.scan_error).scan_tokens()
         statements = Parser(tokens, self.parse_error).parse()
         if not self.error_code:
-            self.interpreter.interpret(statements)
+            Resolver(self.interpreter, self.parse_error).resolve(statements)
+            if not self.error_code:
+                self.interpreter.interpret(statements)
 
     def scan_error(self, line: int, message: str):
         self.report(message, line)

@@ -4,43 +4,39 @@ from typing import Any
 from .token import Token
 
 
-@dataclass
+@dataclass(eq=False)
 class Expr:
 
     def accept(self, visitor):
-        return getattr(visitor, f'visit_{type(self).__name__}')(self)
-
-    def __str__(self):
-        from .astprinter import AstPrinter
-        return AstPrinter().format(self)
+        return visitor.visit(self)
 
 
-@dataclass
+@dataclass(eq=False)
 class Assign(Expr):
     name: Token
     value: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Binary(Expr):
     left: Expr
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Call(Expr):
     callee: Expr
     paren: Token
     arguments: list[Expr]
 
 
-@dataclass
+@dataclass(eq=False)
 class Grouping(Expr):
     expression: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Literal(Expr):
     value: Any
 
@@ -55,19 +51,19 @@ class Literal(Expr):
         return self.value is not None and self.value is not False
 
 
-@dataclass
+@dataclass(eq=False)
 class Logical(Expr):
     left: Expr
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Unary(Expr):
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Variable(Expr):
     name: Token

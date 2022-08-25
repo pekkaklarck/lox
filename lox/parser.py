@@ -105,9 +105,9 @@ class Parser:
             increment = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
         body = self.statement()
-        loop = While(condition, body)
         if increment is not None:
-            loop.body = Block([loop.body, Expression(increment)])
+            body = Block([body, Expression(increment)])
+        loop = While(condition, body)
         return loop if initializer is None else Block([initializer, loop])
 
     def print_statement(self) -> Stmt:

@@ -4,7 +4,7 @@ from typing import Any
 
 
 class TokenType(Enum):
-    # Single - character tokens.
+    # Single character tokens.
     LEFT_PAREN = auto()
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()
@@ -53,8 +53,11 @@ class TokenType(Enum):
 
     EOF = auto()
 
+    def __repr__(self):
+        return str(self)
 
-@dataclass
+
+@dataclass(frozen=True)
 class Token:
     type: TokenType
     lexeme: str

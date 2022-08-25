@@ -20,6 +20,7 @@ class Interpreter(Visitor):
             initial={'clock': NativeFunction('clock', 0, time.time),
                      'str': NativeFunction('str', 1, str)}
         )
+        self.locals: dict[Expr, int] = {}
         self.error_reporter = error_reporter
 
     def interpret(self, statements: list[Stmt]):
@@ -31,6 +32,9 @@ class Interpreter(Visitor):
 
     def execute(self, stmt: Stmt):
         stmt.accept(self)
+
+    def resolve(self, expr: Expr, depth: int):
+        self.locals[expr] = depth
 
     def execute_block(self, statements: list[Stmt], environment: Environment):
         previous, self.environment = self.environment, environment
@@ -83,7 +87,11 @@ class Interpreter(Visitor):
 
     def visit_Assign(self, expr: Assign):
         value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
+        if expr in self.locals:
+            distance = self.locals[expr]
+            self.environment.assign_at(distance, expr.name.lexeme, value)
+        else:
+            self.globals.assign(expr.name, value)
         return value
 
     def visit_Binary(self, expr: Binary):
@@ -155,15 +163,22 @@ class Interpreter(Visitor):
                 return not right
 
     def visit_Variable(self, expr: Variable):
-        return self.environment.get(expr.name)
+        return self.look_up_variable(expr.name, expr)
+
+    def look_up_variable(self, name: Token, expr: Expr):
+        if expr in self.locals:
+            distance = self.locals[expr]
+            return self.environment.get_at(distance, name.lexeme)
+        return self.globals.get(name)
 
     def check_number_operands(self, operator: Token, *operands: Any):
         if not all(isinstance(o, Decimal) for o in operands):
-            raise RunError('Operands must be numbers.', operator)
+            raise RunError(f'Operands must be numbers, got {operands}.', operator)
 
     def check_number_or_string_operands(self, operator: Token, *operands: Any):
         if all(isinstance(o, Decimal) for o in operands):
             return
         if all(isinstance(o, str) for o in operands):
             return
-        raise RunError('Operands must be two numbers or two strings.', operator)
+        raise RunError(f'Operands must be two numbers or two strings, got {operands}.',
+                       operator)
