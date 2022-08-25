@@ -16,6 +16,12 @@ class Expr:
 
 
 @dataclass
+class Assign(Expr):
+    name: Token
+    value: Expr
+
+
+@dataclass
 class Binary(Expr):
     left: Expr
     operator: Token
@@ -23,32 +29,8 @@ class Binary(Expr):
 
 
 @dataclass
-class Unary(Expr):
-    operator: Token
-    right: Expr
-
-
-@dataclass
 class Grouping(Expr):
     expression: Expr
-
-
-@dataclass
-class Variable(Expr):
-    name: Token
-
-
-@dataclass
-class Assign(Expr):
-    name: Token
-    value: Expr
-
-
-@dataclass
-class Logical(Expr):
-    left: Expr
-    operator: Token
-    right: Expr
 
 
 @dataclass
@@ -64,3 +46,21 @@ class Literal(Expr):
 
     def __bool__(self):
         return self.value is not None and self.value is not False
+
+
+@dataclass
+class Logical(Expr):
+    left: Expr
+    operator: Token
+    right: Expr
+
+
+@dataclass
+class Unary(Expr):
+    operator: Token
+    right: Expr
+
+
+@dataclass
+class Variable(Expr):
+    name: Token
