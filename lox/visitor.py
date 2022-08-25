@@ -1,5 +1,7 @@
-from .expressions import Assign, Binary, Grouping, Literal, Logical, Unary, Variable
-from .statements import Block, Break, If, Expression, Print, Var, While
+from .expressions import (Assign, Binary, Call, Grouping, Literal, Logical,
+                          Unary, Variable)
+from .statements import (Block, Break, Expression, Function, If, Print, Return,
+                         Var, While)
 
 
 class Visitor:
@@ -11,16 +13,24 @@ class Visitor:
     def visit_Break(self, stmt: Break):
         pass
 
+    def visit_Expression(self, stmt: Expression):
+        stmt.expression.accept(self)
+
+    def visit_Function(self, stmt: Function):
+        for st in stmt.body:
+            st.accept(self)
+
     def visit_If(self, stmt: If):
         stmt.then_branch.accept(self)
         if stmt.else_branch is not None:
             stmt.else_branch.accept(self)
 
-    def visit_Expression(self, stmt: Expression):
-        stmt.expression.accept(self)
-
     def visit_Print(self, stmt: Print):
         stmt.expression.accept(self)
+
+    def visit_Return(self, stmt: Return):
+        if stmt.value is not None:
+            stmt.value.accept(self)
 
     def visit_Var(self, stmt: Var):
         if stmt.initializer is not None:
@@ -35,6 +45,11 @@ class Visitor:
     def visit_Binary(self, expr: Binary):
         expr.left.accept(self)
         expr.right.accept(self)
+
+    def visit_Call(self, expr: Call):
+        expr.callee.accept(self)
+        for arg in expr.arguments:
+            arg.accept(self)
 
     def visit_Grouping(self, expr: Grouping):
         expr.expression.accept(self)

@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+from .exceptions import LoxError
 from .interpreter import Interpreter
 from .parser import Parser
 from .scanner import Scanner
@@ -42,9 +43,8 @@ class Lox:
         where = 'at end' if token.type == TokenType.EOF else f"at '{token.lexeme}'"
         self.report(message, token.line, where)
 
-    def runtime_error(self, error: RuntimeError):
-        message, token = error.args
-        self.report(message, token.line, runtime_error=True)
+    def runtime_error(self, error: LoxError):
+        self.report(error.message, error.token.line, runtime_error=True)
 
     def report(self, message: str, line: int, where: str = '', runtime_error=False):
         if where:

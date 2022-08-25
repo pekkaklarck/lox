@@ -5,8 +5,8 @@ from .token import Token
 
 class Environment:
 
-    def __init__(self, enclosing=None):
-        self.values = {}
+    def __init__(self, enclosing=None, initial=None):
+        self.values = initial or {}
         self.enclosing = enclosing
 
     def define(self, name: str, value: Any):

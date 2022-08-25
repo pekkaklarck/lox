@@ -1,9 +1,14 @@
 from decimal import Decimal
+import time
 from typing import Any
 
 from .environment import Environment
-from .expressions import Assign, Binary, Expr, Grouping, Literal, Logical, Unary, Variable
-from .statements import Block, Break, If, Expression, Print, Stmt, Var, While
+from .exceptions import BreakControl, LoxError, ReturnControl, RunError
+from .expressions import (Assign, Binary, Call, Expr, Grouping, Literal, Logical,
+                          Unary, Variable)
+from .functions import Callable, NativeFunction, UserFunction
+from .statements import (Block, Break, Expression, Function, If, Print, Return,
+                         Stmt, Var, While)
 from .token import Token, TokenType
 from .visitor import Visitor
 
@@ -11,17 +16,18 @@ from .visitor import Visitor
 class Interpreter(Visitor):
 
     def __init__(self, error_reporter):
-        self.environment = Environment()
+        self.globals = self.environment = Environment(
+            initial={'clock': NativeFunction('clock', 0, time.time),
+                     'str': NativeFunction('str', 1, str)}
+        )
         self.error_reporter = error_reporter
 
     def interpret(self, statements: list[Stmt]):
         try:
             for stmt in statements:
                 self.execute(stmt)
-        except RuntimeError as err:
+        except LoxError as err:
             self.error_reporter(err)
-        except StopIteration as err:
-            self.error_reporter(RuntimeError("'break' outside loop.", err.args[0]))
 
     def execute(self, stmt: Stmt):
         stmt.accept(self)
@@ -41,7 +47,14 @@ class Interpreter(Visitor):
         self.execute_block(stmt.statements, Environment(self.environment))
 
     def visit_Break(self, stmt: Break):
-        raise StopIteration(stmt.keyword)
+        raise BreakControl(stmt.keyword)
+
+    def visit_Expression(self, stmt: Expression):
+        self.evaluate(stmt.expression)
+
+    def visit_Function(self, stmt: Function):
+        func = UserFunction(stmt, self.environment)
+        self.environment.define(stmt.name.lexeme, func)
 
     def visit_If(self, stmt: If):
         if self.evaluate(stmt.condition):
@@ -49,12 +62,13 @@ class Interpreter(Visitor):
         elif stmt.else_branch is not None:
             self.execute(stmt.else_branch)
 
-    def visit_Expression(self, stmt: Expression):
-        self.evaluate(stmt.expression)
-
     def visit_Print(self, stmt: Print):
         value = self.evaluate(stmt.expression)
         print(Literal(value))
+
+    def visit_Return(self, stmt: Return):
+        value = self.evaluate(stmt.value) if stmt.value is not None else None
+        raise ReturnControl(value, stmt.keyword)
 
     def visit_Var(self, stmt: Var):
         value = self.evaluate(stmt.initializer) if stmt.initializer is not None else None
@@ -64,7 +78,7 @@ class Interpreter(Visitor):
         while self.evaluate(stmt.condition):
             try:
                 self.execute(stmt.body)
-            except StopIteration:
+            except BreakControl:
                 break
 
     def visit_Assign(self, expr: Assign):
@@ -86,7 +100,7 @@ class Interpreter(Visitor):
             case TokenType.SLASH:
                 self.check_number_operands(operator, left, right)
                 if right == 0:
-                    raise RuntimeError('Division by zero.', operator)
+                    raise RunError('Division by zero.', operator)
                 return left / right
             case TokenType.STAR:
                 self.check_number_operands(operator, left, right)
@@ -107,6 +121,16 @@ class Interpreter(Visitor):
                 return left != right
             case TokenType.EQUAL_EQUAL:
                 return left == right
+
+    def visit_Call(self, expr: Call):
+        callee = self.evaluate(expr.callee)
+        arguments = [self.evaluate(arg) for arg in expr.arguments]
+        if not isinstance(callee, Callable):
+            raise RunError('Can only call functions and classes.', expr.paren)
+        if callee.arity != len(arguments):
+            raise RunError(f'Expected {callee.arity} arguments but got '
+                               f'{len(arguments)}.', expr.paren)
+        return callee.call(self, arguments)
 
     def visit_Grouping(self, expr: Grouping):
         return self.evaluate(expr.expression)
@@ -135,11 +159,11 @@ class Interpreter(Visitor):
 
     def check_number_operands(self, operator: Token, *operands: Any):
         if not all(isinstance(o, Decimal) for o in operands):
-            raise RuntimeError('Operands must be numbers.', operator)
+            raise RunError('Operands must be numbers.', operator)
 
     def check_number_or_string_operands(self, operator: Token, *operands: Any):
         if all(isinstance(o, Decimal) for o in operands):
             return
         if all(isinstance(o, str) for o in operands):
             return
-        raise RuntimeError('Operands must be two numbers or two strings.', operator)
+        raise RunError('Operands must be two numbers or two strings.', operator)
