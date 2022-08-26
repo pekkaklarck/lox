@@ -19,13 +19,15 @@ class Parser:
         self.current = 0
         self.error_reporter = error_reporter
 
-    def parse(self):
+    def parse(self) -> list[Stmt]:
         statements = []
         while not self.is_at_end():
-            statements.append(self.declaration())
+            stmt = self.declaration()
+            if stmt is not None:
+                statements.append(stmt)
         return statements
 
-    def declaration(self) -> Stmt:
+    def declaration(self) -> Stmt|None:
         try:
             if self.match(TokenType.FUN):
                 return self.function('function')
@@ -35,8 +37,8 @@ class Parser:
                 return self.var_declaration()
             return self.statement()
         except ParseError:
-            # self.synchronize()    FIXME
-            raise
+            self.synchronize()
+            return None
 
     def function(self, kind: typing.Literal['function', 'method']) -> Function:
         name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
@@ -153,7 +155,9 @@ class Parser:
     def block(self) -> list[Stmt]:
         statements = []
         while not (self.is_at_end() or self.check(TokenType.RIGHT_BRACE)):
-            statements.append(self.declaration())
+            stmt = self.declaration()
+            if stmt is not None:
+                statements.append(stmt)
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
         return statements
 
@@ -307,3 +311,14 @@ class Parser:
     def error(self, token: Token, message: str) -> ParseError:
         self.error_reporter(token, message)
         return ParseError()
+
+    def synchronize(self):
+        starts_new_stmt = {TokenType.CLASS, TokenType.FUN, TokenType.VAR,
+                           TokenType.FOR, TokenType.IF, TokenType.WHILE,
+                           TokenType.PRINT, TokenType.RETURN, TokenType.BREAK}
+        while True:
+            previous = self.advance()
+            if (self.is_at_end()
+                    or previous.type is TokenType.SEMICOLON
+                    or self.peek().type in starts_new_stmt):
+                return

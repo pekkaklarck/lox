@@ -34,10 +34,9 @@ class Lox:
     def run(self, source: str):
         tokens = Scanner(source, self.scan_error).scan_tokens()
         statements = Parser(tokens, self.parse_error).parse()
+        Resolver(self.interpreter, self.parse_error).resolve(statements)
         if not self.error_code:
-            Resolver(self.interpreter, self.parse_error).resolve(statements)
-            if not self.error_code:
-                self.interpreter.interpret(statements)
+            self.interpreter.interpret(statements)
 
     def scan_error(self, line: int, message: str):
         self.report(message, line)
