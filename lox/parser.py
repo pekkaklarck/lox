@@ -36,11 +36,11 @@ class Parser:
             return self.statement()
         except ParseError:
             # self.synchronize()    FIXME
-            pass
+            raise
 
     def function(self, kind: typing.Literal['function', 'method']) -> Function:
         name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
-        parameters = []
+        parameters: list[Token] = []
         self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
         if not self.check(TokenType.RIGHT_PAREN):
             while not parameters or self.match(TokenType.COMMA):
@@ -60,7 +60,7 @@ class Parser:
         else:
             superclass = None
         self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
-        methods = []
+        methods: list[Function] = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
             methods.append(self.function('method'))
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
@@ -110,9 +110,9 @@ class Parser:
         elif self.match(TokenType.VAR):
             initializer = self.var_declaration()
         else:
-            initializer = self.expression()
+            initializer = self.expression_statement()
         if self.check(TokenType.SEMICOLON):
-            condition = Literal(True)
+            condition: Expr = Literal(True)
         else:
             condition = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
@@ -242,7 +242,7 @@ class Parser:
         return expr
 
     def finish_call(self, callee: Expr) -> Expr:
-        arguments = []
+        arguments: list[Expr] = []
         if not self.check(TokenType.RIGHT_PAREN):
             while not arguments or self.match(TokenType.COMMA):
                 arguments.append(self.expression())

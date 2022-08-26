@@ -17,10 +17,9 @@ from .visitor import Visitor
 class Interpreter(Visitor):
 
     def __init__(self, error_reporter: typing.Callable[[LoxError], None]):
-        self.globals = self.environment = Environment(
-            initial={'clock': NativeFunction('clock', 0, time.time),
-                     'str': NativeFunction('str', 1, str)}
-        )
+        native = {'clock': NativeFunction('clock', 0, time.time),
+                  'str': NativeFunction('str', 1, str)}
+        self.globals = self.environment = Environment(initial=native)
         self.locals: dict[Expr, int] = {}
         self.error_reporter = error_reporter
 
@@ -68,6 +67,7 @@ class Interpreter(Visitor):
                    for meth in stmt.methods}
         klass = LoxClass(stmt.name.lexeme, superclass, methods)
         if superclass:
+            assert self.environment.enclosing is not None    # Make mypy happy.
             self.environment = self.environment.enclosing
         self.environment.assign(stmt.name, klass)
 

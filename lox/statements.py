@@ -25,7 +25,7 @@ class Break(Stmt):
 @dataclass(eq=False)
 class Class(Stmt):
     name: Token
-    superclass: Variable
+    superclass: Variable|None
     methods: list['Function']
 
 

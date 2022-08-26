@@ -37,8 +37,9 @@ class Environment:
     def assign_at(self, distance: int, name: str, value: Any):
         self.ancestor(distance).values[name] = value
 
-    def ancestor(self, distance: int):
+    def ancestor(self, distance: int) -> 'Environment':
         environment = self
         for _ in range(distance):
+            assert environment.enclosing is not None    # Make mypy happy.
             environment = environment.enclosing
         return environment

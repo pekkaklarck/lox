@@ -1,8 +1,11 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from .exceptions import RunError
 from .functions import Callable, LoxFunction
 from .token import Token
+
+if TYPE_CHECKING:
+    from .interpreter import Interpreter
 
 
 class LoxClass(Callable):
