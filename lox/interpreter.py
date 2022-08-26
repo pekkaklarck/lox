@@ -1,13 +1,14 @@
 from decimal import Decimal
 import time
-from typing import Any
+import typing
 
+from .classes import LoxClass, LoxInstance
 from .environment import Environment
 from .exceptions import BreakControl, LoxError, ReturnControl, RunError
-from .expressions import (Assign, Binary, Call, Expr, Grouping, Literal, Logical,
-                          Unary, Variable)
-from .functions import Callable, NativeFunction, UserFunction
-from .statements import (Block, Break, Expression, Function, If, Print, Return,
+from .expressions import (Assign, Binary, Call, Expr, Get, Grouping, Literal, Logical,
+                          Set, Super, This, Unary, Variable)
+from .functions import Callable, NativeFunction, LoxFunction
+from .statements import (Block, Break, Class, Expression, Function, If, Print, Return,
                          Stmt, Var, While)
 from .token import Token, TokenType
 from .visitor import Visitor
@@ -15,7 +16,7 @@ from .visitor import Visitor
 
 class Interpreter(Visitor):
 
-    def __init__(self, error_reporter):
+    def __init__(self, error_reporter: typing.Callable[[LoxError], None]):
         self.globals = self.environment = Environment(
             initial={'clock': NativeFunction('clock', 0, time.time),
                      'str': NativeFunction('str', 1, str)}
@@ -53,11 +54,28 @@ class Interpreter(Visitor):
     def visit_Break(self, stmt: Break):
         raise BreakControl(stmt.keyword)
 
+    def visit_Class(self, stmt: Class):
+        if stmt.superclass is not None:
+            superclass = self.evaluate(stmt.superclass)
+            if not isinstance(superclass, LoxClass):
+                raise RunError('Superclass must be a class.', stmt.superclass.name)
+        else:
+            superclass = None
+        self.environment.define(stmt.name.lexeme, None)
+        if superclass:
+            self.environment = Environment(self.environment, {'super': superclass})
+        methods = {meth.name.lexeme: LoxFunction(meth, self.environment, is_method=True)
+                   for meth in stmt.methods}
+        klass = LoxClass(stmt.name.lexeme, superclass, methods)
+        if superclass:
+            self.environment = self.environment.enclosing
+        self.environment.assign(stmt.name, klass)
+
     def visit_Expression(self, stmt: Expression):
         self.evaluate(stmt.expression)
 
     def visit_Function(self, stmt: Function):
-        func = UserFunction(stmt, self.environment)
+        func = LoxFunction(stmt, self.environment)
         self.environment.define(stmt.name.lexeme, func)
 
     def visit_If(self, stmt: If):
@@ -140,6 +158,12 @@ class Interpreter(Visitor):
                                f'{len(arguments)}.', expr.paren)
         return callee.call(self, arguments)
 
+    def visit_Get(self, expr: Get):
+        instance = self.evaluate(expr.object)
+        if not isinstance(instance, LoxInstance):
+            raise RunError('Only instances have properties.', expr.name)
+        return instance.get(expr.name)
+
     def visit_Grouping(self, expr: Grouping):
         return self.evaluate(expr.expression)
 
@@ -162,6 +186,25 @@ class Interpreter(Visitor):
             case TokenType.BANG:
                 return not right
 
+    def visit_Set(self, expr: Set):
+        instance = self.evaluate(expr.object)
+        if not isinstance(instance, LoxInstance):
+            raise RunError('Only instances have properties.', expr.name)
+        value = self.evaluate(expr.value)
+        instance.set(expr.name, value)
+
+    def visit_Super(self, expr: Super):
+        distance = self.locals[expr]
+        superclass: LoxClass = self.environment.get_at(distance, 'super')
+        instance: LoxInstance = self.environment.get_at(distance - 1, 'this')
+        method = superclass.find_method(expr.method.lexeme)
+        if not method:
+            raise RunError(f"Undefined property '{expr.method.lexeme}'.", expr.method)
+        return method.bind(instance)
+
+    def visit_This(self, expr: This):
+        return self.look_up_variable(expr.keyword, expr)
+
     def visit_Variable(self, expr: Variable):
         return self.look_up_variable(expr.name, expr)
 
@@ -171,11 +214,11 @@ class Interpreter(Visitor):
             return self.environment.get_at(distance, name.lexeme)
         return self.globals.get(name)
 
-    def check_number_operands(self, operator: Token, *operands: Any):
+    def check_number_operands(self, operator: Token, *operands: typing.Any):
         if not all(isinstance(o, Decimal) for o in operands):
             raise RunError(f'Operands must be numbers, got {operands}.', operator)
 
-    def check_number_or_string_operands(self, operator: Token, *operands: Any):
+    def check_number_or_string_operands(self, operator: Token, *operands: typing.Any):
         if all(isinstance(o, Decimal) for o in operands):
             return
         if all(isinstance(o, str) for o in operands):

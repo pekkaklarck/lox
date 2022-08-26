@@ -26,7 +26,7 @@ class Scanner:
         'while': TokenType.WHILE
     }
 
-    def __init__(self, source: str, error_reporter: Callable):
+    def __init__(self, source: str, error_reporter: Callable[[int, str], None]):
         self.source = source
         self.tokens: list[Token] = []
         self.start = 0

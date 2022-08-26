@@ -1,5 +1,6 @@
 from typing import Any
 
+from .exceptions import RunError
 from .token import Token
 
 
@@ -19,7 +20,7 @@ class Environment:
         elif self.enclosing is not None:
             self.enclosing.assign(name, value)
         else:
-            raise RuntimeError(f"Undefined variable '{name.lexeme}'.", name)
+            raise RunError(f"Undefined variable '{name.lexeme}'.", name)
 
     def get(self, name: Token) -> Any:
         if name.lexeme in self.values:
@@ -27,7 +28,7 @@ class Environment:
         elif self.enclosing is not None:
             return self.enclosing.get(name)
         else:
-            raise RuntimeError(f"Undefined variable '{name.lexeme}'.", name)
+            raise RunError(f"Undefined variable '{name.lexeme}'.", name)
 
     def get_at(self, distance: int, name: str) -> Any:
         environment = self.ancestor(distance)

@@ -6,6 +6,7 @@ from .exceptions import ReturnControl
 from .statements import Function
 
 if TYPE_CHECKING:
+    from .classes import LoxInstance
     from .interpreter import Interpreter
 
 
@@ -43,11 +44,17 @@ class NativeFunction(Callable):
         return f'<fn {self.name}>'
 
 
-class UserFunction(Callable):
+class LoxFunction(Callable):
 
-    def __init__(self, declaration: Function, closure: Environment):
+    def __init__(self, declaration: Function, closure: Environment,
+                 is_method: bool = False):
         self.declaration = declaration
         self.closure = closure
+        self.is_method = is_method
+
+    @property
+    def is_initializer(self):
+        return self.is_method and self.declaration.name.lexeme == 'init'
 
     @property
     def arity(self) -> int:
@@ -59,8 +66,16 @@ class UserFunction(Callable):
         try:
             interpreter.execute_block(self.declaration.body, environment)
         except ReturnControl as ret:
-            return ret.value
-        return None
+            return_value = ret.value
+        else:
+            return_value = None
+        if self.is_initializer:
+            return self.closure.get_at(0, 'this')
+        return return_value
+
+    def bind(self, instance: 'LoxInstance'):
+        environment = Environment(self.closure, {'this': instance})
+        return LoxFunction(self.declaration, environment, is_method=True)
 
     def __str__(self) -> str:
         return f'<fn {self.declaration.name.lexeme}>'

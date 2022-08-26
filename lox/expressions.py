@@ -32,6 +32,12 @@ class Call(Expr):
 
 
 @dataclass(eq=False)
+class Get(Expr):
+    object: Expr
+    name: Token
+
+
+@dataclass(eq=False)
 class Grouping(Expr):
     expression: Expr
 
@@ -56,6 +62,24 @@ class Logical(Expr):
     left: Expr
     operator: Token
     right: Expr
+
+
+@dataclass(eq=False)
+class Set(Expr):
+    object: Expr
+    name: Token
+    value: Expr
+
+
+@dataclass(eq=False)
+class Super(Expr):
+    keyword: Token
+    method: Token
+
+
+@dataclass(eq=False)
+class This(Expr):
+    keyword: Token
 
 
 @dataclass(eq=False)

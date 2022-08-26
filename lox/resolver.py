@@ -1,18 +1,20 @@
 from typing import Callable
 
-from .expressions import Assign, Expr, Variable
+from .expressions import Assign, Expr, Super, This, Variable
 from .interpreter import Interpreter
-from .statements import Block, Break, Function, Return, Stmt, Var, While
+from .statements import Block, Break, Class, Function, Return, Stmt, Var, While
 from .token import Token
 from .visitor import Visitor
 
 
 class Resolver(Visitor):
 
-    def __init__(self, interpreter: Interpreter, error_reporter: Callable):
+    def __init__(self, interpreter: Interpreter,
+                 error_reporter: Callable[[Token, str], None]):
         self.interpreter = interpreter
         self.scopes: list[dict[str, bool]] = []
-        self.functions = 0
+        self.classes: list[Class] = []
+        self.functions: list[Function] = []
         self.loops = 0
         self.error_reporter = error_reporter
 
@@ -44,13 +46,46 @@ class Resolver(Visitor):
     def start_Function(self, stmt: Function):
         self.declare(stmt.name)
         self.define(stmt.name)
-        self.functions += 1
+        self.functions.append(stmt)
         self.begin_scope()
         self.resolve_function(stmt)
 
     def end_Function(self, stmt: Function):
         self.end_scope()
-        self.functions -= 1
+        self.functions.pop()
+
+    def start_Class(self, stmt: Class):
+        self.declare(stmt.name)
+        self.define(stmt.name)
+        self.classes.append(stmt)
+        if stmt.superclass is not None:
+            if stmt.name.lexeme == stmt.superclass.name.lexeme:
+                self.error_reporter(stmt.superclass.name,
+                                    'Class cannot inherit from itself.')
+            self.begin_scope()
+            self.scopes[-1]['super'] = True
+        self.begin_scope()
+        self.scopes[-1]['this'] = True
+
+    def end_Class(self, stmt: Class):
+        self.end_scope()
+        if stmt.superclass is not None:
+            self.end_scope()
+        self.classes.pop()
+
+    def start_Super(self, expr: Super):
+        if not self.classes:
+            self.error_reporter(expr.keyword, "Cannot use 'super' outside class.")
+        elif not self.classes[-1].superclass:
+            self.error_reporter(expr.keyword, "Cannot use 'super' in a class "
+                                              "with no superclass.")
+        self.resolve_local(expr, expr.keyword)
+
+    def start_This(self, expr: This):
+        if self.classes:
+            self.resolve_local(expr, expr.keyword)
+        else:
+            self.error_reporter(expr.keyword, "Cannot use 'this' outside method.")
 
     def start_While(self, stmt: While):
         self.loops += 1
@@ -61,10 +96,12 @@ class Resolver(Visitor):
     def start_Return(self, stmt: Return):
         if not self.functions:
             self.error_reporter(stmt.keyword, 'Cannot return from top-level code.')
+        elif self.functions[-1].is_init and stmt.value is not None:
+            self.error_reporter(stmt.keyword, "Cannot return value from 'init'.")
 
     def start_Break(self, stmt: Break):
         if not self.loops:
-            self.error_reporter(stmt.keyword, 'Cannot break outside loop.')
+            self.error_reporter(stmt.keyword, "Cannot use 'break' outside loop.")
 
     def begin_scope(self):
         self.scopes.append({})
@@ -76,8 +113,8 @@ class Resolver(Visitor):
         if self.scopes:
             scope = self.scopes[-1]
             if name.lexeme in scope:
-                self.error_reporter(name,
-                                    'Already a variable with this name in this scope.')
+                self.error_reporter(name, f"A variable with name '{name.lexeme}' "
+                                          f"exists in this scope already.")
             scope[name.lexeme] = False
 
     def define(self, name: Token):

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Literal
 
-from .expressions import Expr
+from .expressions import Expr, Variable
 from .token import Token
 
 
@@ -22,10 +23,22 @@ class Break(Stmt):
 
 
 @dataclass(eq=False)
+class Class(Stmt):
+    name: Token
+    superclass: Variable
+    methods: list['Function']
+
+
+@dataclass(eq=False)
 class Function(Stmt):
     name: Token
     params: list[Token]
     body: list[Stmt]
+    kind: Literal['function', 'method']
+
+    @property
+    def is_init(self) -> bool:
+        return self.kind == 'method' and self.name.lexeme == 'init'
 
 
 @dataclass(eq=False)

@@ -1,8 +1,8 @@
-from typing import Callable
+import typing
 
-from .expressions import (Assign, Binary, Call, Grouping, Expr, Literal, Logical,
-                          Unary, Variable)
-from .statements import (Block, Break, Expression, Function, If, Print, Return,
+from .expressions import (Assign, Binary, Call, Get, Grouping, Expr, Literal, Logical,
+                          Set, Super, This, Unary, Variable)
+from .statements import (Block, Break, Class, Expression, Function, If, Print, Return,
                          Stmt, Var, While)
 from .token import Token, TokenType
 
@@ -13,7 +13,8 @@ class ParseError(Exception):
 
 class Parser:
 
-    def __init__(self, tokens: list[Token], error_reporter: Callable):
+    def __init__(self, tokens: list[Token],
+                 error_reporter: typing.Callable[[Token, str], None]):
         self.tokens = tokens
         self.current = 0
         self.error_reporter = error_reporter
@@ -28,6 +29,8 @@ class Parser:
         try:
             if self.match(TokenType.FUN):
                 return self.function('function')
+            if self.match(TokenType.CLASS):
+                return self.class_declaration()
             if self.match(TokenType.VAR):
                 return self.var_declaration()
             return self.statement()
@@ -35,7 +38,7 @@ class Parser:
             # self.synchronize()    FIXME
             pass
 
-    def function(self, kind: str) -> Stmt:
+    def function(self, kind: typing.Literal['function', 'method']) -> Function:
         name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
         parameters = []
         self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
@@ -47,7 +50,21 @@ class Parser:
             self.error(self.peek(), 'Cannot have more than 255 parameters.')
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
-        return Function(name, parameters, body=self.block())
+        return Function(name, parameters, self.block(), kind)
+
+    def class_declaration(self) -> Stmt:
+        name = self.consume(TokenType.IDENTIFIER, 'Expect class name.')
+        if self.match(TokenType.LESS):
+            self.consume(TokenType.IDENTIFIER, 'Expect superclass name.')
+            superclass = Variable(self.previous())
+        else:
+            superclass = None
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+        methods = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
+            methods.append(self.function('method'))
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+        return Class(name, superclass, methods)
 
     def var_declaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, 'Expect variable name.')
@@ -150,6 +167,8 @@ class Parser:
             value = self.assignment()
             if isinstance(expr, Variable):
                 return Assign(expr.name, value)
+            elif isinstance(expr, Get):
+                return Set(expr.object, expr.name, value)
             self.error(equals, 'Invalid assignment target.')
         return expr
 
@@ -214,6 +233,10 @@ class Parser:
         while True:
             if self.match(TokenType.LEFT_PAREN):
                 expr = self.finish_call(expr)
+            elif self.match(TokenType.DOT):
+                name = self.consume(TokenType.IDENTIFIER,
+                                    "Expect property name after '.'.")
+                expr = Get(expr, name)
             else:
                 break
         return expr
@@ -237,6 +260,13 @@ class Parser:
             return Literal(None)
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+        if self.match(TokenType.THIS):
+            return This(self.previous())
+        if self.match(TokenType.SUPER):
+            keyword = self.previous()
+            self.consume(TokenType.DOT, "Expect '.' after super.")
+            method = self.consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+            return Super(keyword, method)
         if self.match(TokenType.IDENTIFIER):
             return Variable(self.previous())
         if self.match(TokenType.LEFT_PAREN):
@@ -252,8 +282,8 @@ class Parser:
                 return True
         return False
 
-    def check(self, type: TokenType) -> bool:
-        return self.peek().type == type
+    def check(self, expected: TokenType) -> bool:
+        return self.peek().type == expected
 
     def advance(self) -> Token:
         if not self.is_at_end():
@@ -269,8 +299,8 @@ class Parser:
     def previous(self) -> Token:
         return self.tokens[self.current - 1]
 
-    def consume(self, type: TokenType, message: str):
-        if self.check(type):
+    def consume(self, expected: TokenType, message: str):
+        if self.check(expected):
             return self.advance()
         raise self.error(self.peek(), message)
 
