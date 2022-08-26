@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from .environment import Environment
 from .exceptions import ReturnControl
 from .statements import Function
+from .types import LoxType
 
 if TYPE_CHECKING:
     from .classes import LoxInstance
@@ -18,7 +19,7 @@ class Callable(ABC):
         ...
 
     @abstractmethod
-    def call(self, interpreter: 'Interpreter', arguments: list[Any]) -> Any:
+    def call(self, interpreter: 'Interpreter', arguments: list[LoxType]) -> LoxType:
         ...
 
     @abstractmethod
@@ -37,7 +38,7 @@ class NativeFunction(Callable):
     def arity(self) -> int:
         return self._arity
 
-    def call(self, interpreter: 'Interpreter', arguments: list[Any]) -> Any:
+    def call(self, interpreter: 'Interpreter', arguments: list[LoxType]) -> LoxType:
         return self.func(*arguments)
 
     def __str__(self) -> str:
@@ -60,7 +61,7 @@ class LoxFunction(Callable):
     def arity(self) -> int:
         return len(self.declaration.params)
 
-    def call(self, interpreter: 'Interpreter', arguments: list[Any]) -> Any:
+    def call(self, interpreter: 'Interpreter', arguments: list[LoxType]) -> LoxType:
         params = [p.lexeme for p in self.declaration.params]
         environment = Environment(self.closure, dict(zip(params, arguments)))
         try:

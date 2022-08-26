@@ -11,6 +11,7 @@ from .functions import Callable, NativeFunction, LoxFunction
 from .statements import (Block, Break, Class, Expression, Function, If, Print, Return,
                          Stmt, Var, While)
 from .token import Token, TokenType
+from .types import LoxType
 from .visitor import Visitor
 
 
@@ -18,7 +19,8 @@ class Interpreter(Visitor):
 
     def __init__(self, error_reporter: typing.Callable[[LoxError], None]):
         native = {'clock': NativeFunction('clock', 0, time.time),
-                  'str': NativeFunction('str', 1, str)}
+                  'str': NativeFunction('str', 1, str),
+                  'type': NativeFunction('type', 1, type)}
         self.globals = self.environment = Environment(initial=native)
         self.locals: dict[Expr, int] = {}
         self.error_reporter = error_reporter
@@ -214,11 +216,11 @@ class Interpreter(Visitor):
             return self.environment.get_at(distance, name.lexeme)
         return self.globals.get(name)
 
-    def check_number_operands(self, operator: Token, *operands: typing.Any):
+    def check_number_operands(self, operator: Token, *operands: LoxType):
         if not all(isinstance(o, Decimal) for o in operands):
             raise RunError(f'Operands must be numbers, got {operands}.', operator)
 
-    def check_number_or_string_operands(self, operator: Token, *operands: typing.Any):
+    def check_number_or_string_operands(self, operator: Token, *operands: LoxType):
         if all(isinstance(o, Decimal) for o in operands):
             return
         if all(isinstance(o, str) for o in operands):

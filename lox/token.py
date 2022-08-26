@@ -1,6 +1,7 @@
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Any
+
+from .types import LoxType
 
 
 class TokenType(Enum):
@@ -61,6 +62,6 @@ class TokenType(Enum):
 class Token:
     type: TokenType
     lexeme: str
-    literal: Any = None
+    literal: LoxType = None
     line: int = -1
 

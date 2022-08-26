@@ -1,8 +1,9 @@
 from decimal import Decimal
 from string import ascii_letters, digits
-from typing import Any, Callable
+from typing import Callable
 
 from .token import Token, TokenType
+from .token import LoxType
 
 
 class Scanner:
@@ -166,7 +167,7 @@ class Scanner:
     def is_identifier_body(self, char):
         return self.is_identifier_start(char) or self.is_digit(char)
 
-    def add_token(self, type: TokenType, literal: Any = None):
+    def add_token(self, type: TokenType, literal: LoxType = None):
         text = self.source[self.start:self.current]
         self.tokens.append(Token(type, text, literal, self.line))
 

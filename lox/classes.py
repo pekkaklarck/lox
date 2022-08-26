@@ -1,8 +1,9 @@
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from .exceptions import RunError
 from .functions import Callable, LoxFunction
 from .token import Token
+from .types import LoxType
 
 if TYPE_CHECKING:
     from .interpreter import Interpreter
@@ -21,7 +22,7 @@ class LoxClass(Callable):
         initializer = self.find_method('init')
         return initializer.arity if initializer is not None else 0
 
-    def call(self, interpreter: 'Interpreter', arguments: list[Any]) -> Any:
+    def call(self, interpreter: 'Interpreter', arguments: list[LoxType]) -> 'LoxInstance':
         instance = LoxInstance(self)
         initializer = self.find_method('init')
         if initializer is not None:
@@ -43,9 +44,9 @@ class LoxInstance:
 
     def __init__(self, klass: LoxClass):
         self.klass = klass
-        self.fields: dict[str, Any] = {}
+        self.fields: dict[str, LoxType] = {}
 
-    def get(self, name: Token) -> Any:
+    def get(self, name: Token) -> LoxType:
         if name.lexeme in self.fields:
             return self.fields[name.lexeme]
         method = self.klass.find_method(name.lexeme)
@@ -53,7 +54,7 @@ class LoxInstance:
             return method.bind(self)
         raise RunError(f"Undefined property '{name.lexeme}'.", name)
 
-    def set(self, name: Token, value: Any):
+    def set(self, name: Token, value: LoxType):
         self.fields[name.lexeme] = value
 
     def __str__(self):

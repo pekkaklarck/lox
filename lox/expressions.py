@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Any
 
 from .token import Token
+from .types import LoxType
 
 
 @dataclass(eq=False)
@@ -44,7 +44,7 @@ class Grouping(Expr):
 
 @dataclass(eq=False)
 class Literal(Expr):
-    value: Any
+    value: LoxType
 
     def __str__(self):
         if self.value is None:
